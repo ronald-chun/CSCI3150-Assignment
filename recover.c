@@ -1,6 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <dirent.h>	// opendir(), readdir(), closedir()
+#include <string.h>
+
+#define EOC 0x0ffffff8	//EOF=-1
+char choice=0,opt,*devfile=NULL,*target=NULL,*dest=NULL;
+unsigned int *fat_disk;
+unsigned int total_dir_entry;
+unsigned int offset, sub=0, address,su=0;//sub directory,number=no.of sub-directory
 
 #pragma pack(push, 1)
 struct BootEntry {
@@ -62,20 +70,25 @@ void print_usage(char* argv) {
 
 int main( int argc, char *argv[] ) {
 
-    if (argv[1] == NULL) {
+    if (strcmp(argv[1], "-d") != 0 ) {
         print_usage(argv[0]);
     }
     int opt = 0;
     int dflag = 0;
-
+	int rflag = 0;
+	FILE *fptr;
     while ( (opt = getopt(argc, argv, "d:ilr:o:x:")) != -1) {
         switch (opt) {
             case 'd' :
-                if(argv[2] == NULL || strcmp(argv[2], "-i") == 0  || strcmp(argv[2], "-l") == 0  || strcmp(argv[2], "-r") == 0  || strcmp(argv[2], "-x") == 0 ) {
+                if(argv[3] == NULL || strcmp(argv[2], "-i") == 0  || strcmp(argv[2], "-l") == 0  || strcmp(argv[2], "-r") == 0  || strcmp(argv[2], "-x") == 0 ) {
                     print_usage(argv[0]);
                 }
-                // printf("argv[2]: %s\n", argv[2]);
                 printf("-d: %s\n", argv[2]);
+				fptr = fopen(argv[2],"r");
+				if (fptr == NULL) {
+					perror("Error: ");
+					exit(1);
+				}
                 dflag++;
                 break;
             case 'i' :
@@ -83,7 +96,6 @@ int main( int argc, char *argv[] ) {
                     print_usage(argv[0]);
                 } else {
                     printf("-i\n");
-                    FILE *fptr = fopen(argv[2],"r+");
                     fread(&boot,sizeof(struct BootEntry),1,fptr);
                     printf("Number of FATs = %u\n", boot.BPB_NumFATs);
                     printf("Number of bytes per sector = %d\n", boot.BPB_BytsPerSec);
@@ -98,6 +110,8 @@ int main( int argc, char *argv[] ) {
                     print_usage(argv[0]);
                 } else {
                     printf("-l\n");
+					// list_directory();
+					// print_direction();
                     break;
                 }
             case 'r' :
@@ -106,11 +120,12 @@ int main( int argc, char *argv[] ) {
                 } else {
                     printf("-r\n");
                     break;
+					rflag++;
                 }
             case 'o' :
-                if (dflag == 0) {
+                if (dflag == 0 || rflag == 0) {
                     print_usage(argv[0]);
-                } else {
+				} else {
                     printf("-o\n");
                     break;
                 }
@@ -121,10 +136,12 @@ int main( int argc, char *argv[] ) {
                     printf("-x\n");
                     break;
                 }
+			default :
+				exit(1);
         }
     }
 
 
-
+	fclose(fptr);
     return 0;
 }
