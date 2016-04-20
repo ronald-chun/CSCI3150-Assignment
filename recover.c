@@ -68,15 +68,12 @@ void print_usage(char* argv) {
     exit(1);
 }
 
-void file_name(unsigned i,char *tmp){
+int file_name(unsigned i,char *tmp, int no){
 	int j;
 
-	// char lfn[10]  = "LFN entry\n";
-	// if(dir[i].DIR_Name[7] & 0x7e){
-	// 	// printf("LFN entry\n");
-	// 	tmp = "LFN entry\n";
-	// 	tmp += 7;
-	// }
+	if( dir[i].DIR_Name[6] == '~') {
+		printf("%d, LFN entry\n", no++);
+	}
 
 	for (j = 0; j < 8; j++) {
 		if (dir[i].DIR_Name[j] == ' ') {
@@ -103,6 +100,7 @@ void file_name(unsigned i,char *tmp){
 		// }
 	}
 	*tmp='\0';
+	return no;
 }
 
 void print_direction(FILE *fptr){
@@ -114,7 +112,7 @@ void print_direction(FILE *fptr){
 		if ( dir[i].DIR_Attr == 0x0f || dir[i].DIR_Name[0] == 0x00) {
 			continue;
 		}
-		file_name(i, fname);
+		no = file_name(i, fname, no);
 		fsize = dir[i].DIR_FileSize;
 		start = (dir[i].DIR_FstClusHI << 16) + dir[i].DIR_FstClusLO;
 		// if(sub){//subdirectory
@@ -156,7 +154,7 @@ void print_direction(FILE *fptr){
 		// 	}
 		// 	else{//not a sub directory
 				if(dir[i].DIR_Name[0] == 0xe5){//deleted file
-					file_name(i, fname2);
+					no = file_name(i, fname2, no);
 					fname2[0] = '?';
 					printf("%d, %s, %u, %u\n", no++, fname2, fsize, start);
 				}
