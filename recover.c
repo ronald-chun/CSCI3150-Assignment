@@ -68,6 +68,127 @@ void print_usage(char* argv) {
     exit(1);
 }
 
+void file_name(unsigned i,char *tmp){
+	int j;
+
+	// char lfn[10]  = "LFN entry\n";
+	// if(dir[i].DIR_Name[7] & 0x7e){
+	// 	// printf("LFN entry\n");
+	// 	tmp = "LFN entry\n";
+	// 	tmp += 7;
+	// }
+
+	for (j = 0; j < 8; j++) {
+		if (dir[i].DIR_Name[j] == ' ') {
+			break;
+		}
+		*tmp++ = dir[i].DIR_Name[j];
+	}
+
+	if (dir[i].DIR_Name[8] != ' ') {
+		*tmp++ = '.';
+		for (j=8; j<11; j++) {
+			if (dir[i].DIR_Name[j] == ' '){
+				break;
+			}
+			*tmp++ = dir[i].DIR_Name[j];
+		}
+	}
+	if(dir[i].DIR_Attr & 0x10){
+		// if(su&&dir[i].DIR_Name[0]=='.'){
+		// 	*tmp++ ='/';
+		// }
+		// else {
+			*tmp++ ='/';
+		// }
+	}
+	*tmp='\0';
+}
+
+void print_direction(FILE *fptr){
+	unsigned int i, fsize, start;
+	char fname[257], fname2[257];//fname2=deleted file
+	int no = 1;
+
+	for(i = 0; i < total_dir_entry; i++){
+		if ( dir[i].DIR_Attr == 0x0f || dir[i].DIR_Name[0] == 0x00) {
+			continue;
+		}
+		file_name(i, fname);
+		fsize = dir[i].DIR_FileSize;
+		start = (dir[i].DIR_FstClusHI << 16) + dir[i].DIR_FstClusLO;
+		// if(sub){//subdirectory
+		// 	if (strcmp(fname, target) == 0){
+		// 		sub=0;
+		// 		address=offset +(start-2)*boot.BPB_BytsPerSec *boot.BPB_SecPerClus;
+		// 		offset=address;
+		// 		unsigned int root_cluster;
+		// 		// FILE *fptr = fopen(devfile,"r");
+		// 		fread(&boot,sizeof(struct BootEntry),1,fptr);		//read the file into boot with BootEntry structure
+		// 		fat_disk = malloc(boot.BPB_FATSz32*boot.BPB_BytsPerSec);
+		// 		pread(fileno(fptr), fat_disk, boot.BPB_FATSz32*boot.BPB_BytsPerSec, boot.BPB_RsvdSecCnt*boot.BPB_BytsPerSec);
+		// 		struct DirEntry *ter;
+		// 		ter = dir = malloc(root_cluster*boot.BPB_BytsPerSec *boot.BPB_SecPerClus);
+		// 		root_cluster=0;
+		// 		for (i=boot.BPB_RootClus;i<EOC;i=fat_disk[i]){
+		// 			root_cluster++;
+		// 		}
+		// 		for(i=boot.BPB_RootClus;i<EOC;i=fat_disk[i]){
+		// 			pread(fileno(fptr),ter,boot.BPB_BytsPerSec *boot.BPB_SecPerClus,offset);
+		// 			ter += (boot.BPB_BytsPerSec *boot.BPB_SecPerClus)/sizeof(struct DirEntry);
+		// 		}
+		// 		su=1;
+		// 		for(i=0;i<total_dir_entry;i++){
+		// 			if ( dir[i].DIR_Attr == 0x0f||dir[i].DIR_Name[0] ==0x00) continue;
+		// 			file_name(i,fname);
+		// 			fsize = dir[i].DIR_FileSize;
+		// 			start = (dir[i].DIR_FstClusHI<<16)+dir[i].DIR_FstClusLO;
+		// 			if(dir[i].DIR_Name[0]==0xe5){ //deleted file
+		// 				file_name(i,fname2);
+		// 				fname2[0]='?';
+		// 				printf("%d, %s, %u, %u\n",no++,fname2,fsize,start);
+		// 			}
+		// 				else
+		// 				printf("%d, %s, %u, %u\n",no++,fname,fsize,start);
+		// 			}
+		// 		}
+		// 		else sub=1;//not match
+		// 	}
+		// 	else{//not a sub directory
+				if(dir[i].DIR_Name[0] == 0xe5){//deleted file
+					file_name(i, fname2);
+					fname2[0] = '?';
+					printf("%d, %s, %u, %u\n", no++, fname2, fsize, start);
+				}
+				else {
+					printf("%d, %s, %u, %u\n",no++, fname, fsize, start);
+				}
+			// }
+	}
+}
+
+void readbootentry(FILE *fptr){
+	unsigned int root_cluster,i;
+	// FILE *fptr = fopen(devfile,"r");
+	fread(&boot, sizeof(struct BootEntry), 1, fptr);		//read the file into boot with BootEntry structure
+	fat_disk = malloc(boot.BPB_FATSz32 * boot.BPB_BytsPerSec);
+	pread(fileno(fptr), fat_disk, boot.BPB_FATSz32 * boot.BPB_BytsPerSec, boot.BPB_RsvdSecCnt * boot.BPB_BytsPerSec);
+	root_cluster = 0;
+	for (i = boot.BPB_RootClus; i < EOC; i = fat_disk[i]){
+		root_cluster++;
+	}
+
+	struct DirEntry *ter;
+	ter = dir = malloc(root_cluster * boot.BPB_BytsPerSec * boot.BPB_SecPerClus);
+	total_dir_entry = (root_cluster * boot.BPB_BytsPerSec * boot.BPB_SecPerClus) / sizeof(struct DirEntry);
+	offset = (boot.BPB_RsvdSecCnt + boot.BPB_NumFATs * boot.BPB_FATSz32) * boot.BPB_BytsPerSec;
+	for(i = boot.BPB_RootClus; i < EOC; i = fat_disk[i]){
+		pread(fileno(fptr), ter,boot.BPB_BytsPerSec * boot.BPB_SecPerClus, offset+(i-2) * boot.BPB_BytsPerSec * boot.BPB_SecPerClus);
+		ter += (boot.BPB_BytsPerSec * boot.BPB_SecPerClus) / sizeof(struct DirEntry);
+	}
+	fclose(fptr);
+}
+
 int main( int argc, char *argv[] ) {
 
     if (strcmp(argv[1], "-d") != 0 ) {
@@ -110,6 +231,8 @@ int main( int argc, char *argv[] ) {
                     print_usage(argv[0]);
                 } else {
                     printf("-l\n");
+					readbootentry(fptr);
+					print_direction(fptr);
 					// list_directory();
 					// print_direction();
                     break;
@@ -142,6 +265,6 @@ int main( int argc, char *argv[] ) {
     }
 
 
-	fclose(fptr);
+	// fclose(fptr);
     return 0;
 }
