@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define EOC 0x0ffffff8	//EOF=-1
-char choice = 0, opt, *devfile= NULL, *target = NULL, *dest = NULL;
+char choice = 0, opt, *devfile= NULL, *target = NULL, *dest = NULL, *ctarget = NULL;
 unsigned int *fat_disk;
 unsigned int total_dir_entry;
 unsigned int offset, sub=0, address,su=0;//sub directory,number=no.of sub-directory
@@ -131,7 +131,7 @@ int file_name2(unsigned i,char *tmp, int no){
 	return no;
 }
 
-void print_direction(FILE *fptr){
+void list_file(FILE *fptr){
 	unsigned int i, fsize, start;
 	char fname[257], fname2[257];//fname2=deleted file
 	int no = 1;
@@ -216,7 +216,7 @@ void readbootentry(FILE *fptr){
 	fclose(fptr);
 }
 
-void recovery_1(){
+void recovery(){
 	unsigned int i, match = -1;
 	unsigned int fsize, start;
 	char fname[257];
@@ -252,6 +252,47 @@ void recovery_1(){
 				fclose(op);
 			}
 			fclose(fptr);
+		}
+	}
+}
+
+void cleanse(){
+	unsigned int i, match = -1;
+	unsigned int fsize, start;
+	char fname[257];
+	char zero[512] = {0};
+
+	for (i = 0; i < total_dir_entry; i++) {
+		if (dir[i].DIR_Name[0] != 0xe5 || dir[i].DIR_Attr == 0x0f || dir[i].DIR_Attr == 0x10) {
+			continue;
+		}
+		file_name(i, fname);
+		if (strcmp(fname+1, ctarget+1) == 0) {
+			if (match == -1) {
+				match = i;
+			}
+		}
+	}
+	if (match == -1) {
+		printf("%s: error - file not found\n", ctarget);
+	} else {
+		start = (dir[match].DIR_FstClusHI<<16) + dir[match].DIR_FstClusLO;
+		fsize = dir[match].DIR_FileSize;
+		if (fsize == 0 && fat_disk[start] != 0) {
+			printf("%s: error - fail to cleanse\n", ctarget);
+		} else {
+				FILE *fptr = fopen(devfile, "r+");
+				// FILE *op = fopen(dest,"w");
+				// if (op == NULL) {
+				// 	printf("%s: failed to open\n", dest);
+				// } else {
+					// void *buf = malloc(fsize);
+					pwrite(fileno(fptr), &zero, fsize, offset + (start-2) * boot.BPB_BytsPerSec * boot.BPB_SecPerClus);
+					// fwrite(&zero, fsize, 1, fptr);
+					printf("%s: cleansed\n", ctarget);
+					// fclose(op);
+				// }
+				fclose(fptr);
 		}
 	}
 }
@@ -300,7 +341,7 @@ int main( int argc, char *argv[] ) {
                 } else {
                     printf("-l\n");
 					readbootentry(fptr);
-					print_direction(fptr);
+					list_file(fptr);
 					// list_directory();
 					// print_direction();
                     break;
@@ -323,7 +364,7 @@ int main( int argc, char *argv[] ) {
 					dest = optarg;
 					// printf("dest: %s\n", dest);
 					readbootentry(fptr);
-					recovery_1();
+					recovery();
                     break;
                 }
             case 'x' :
@@ -331,6 +372,9 @@ int main( int argc, char *argv[] ) {
                     print_usage(argv[0]);
                 } else {
                     printf("-x\n");
+					ctarget = optarg;
+					readbootentry(fptr);
+					cleanse();
                     break;
                 }
 			default :
