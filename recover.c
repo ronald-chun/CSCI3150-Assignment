@@ -91,36 +91,6 @@ void file_name(unsigned i, char *tmp){
 	*tmp='\0';
 }
 
-int file_name2(unsigned i,char *tmp, int no){
-	int j;
-
-	if( dir[i].DIR_Name[6] == '~') {
-		printf("%d, LFN entry\n", no++);
-	}
-
-	for (j = 0; j < 8; j++) {
-		if (dir[i].DIR_Name[j] == ' ') {
-			break;
-		}
-		*tmp++ = dir[i].DIR_Name[j];
-	}
-
-	if (dir[i].DIR_Name[8] != ' ') {
-		*tmp++ = '.';
-		for (j=8; j<11; j++) {
-			if (dir[i].DIR_Name[j] == ' '){
-				break;
-			}
-			*tmp++ = dir[i].DIR_Name[j];
-		}
-	}
-	if(dir[i].DIR_Attr & 0x10){
-		*tmp++ ='/';
-	}
-	*tmp='\0';
-	return no;
-}
-
 void list_file(FILE *fptr){
 	unsigned int i, fsize, start;
 	char fname[257], fname2[257]; //fname2=deleted file
@@ -131,16 +101,22 @@ void list_file(FILE *fptr){
 			continue;
 		}
 
-		no = file_name2(i, fname, no);
+		file_name(i, fname);
 		fsize = dir[i].DIR_FileSize;
 		start = (dir[i].DIR_FstClusHI << 16) + dir[i].DIR_FstClusLO;
 
 		if(dir[i].DIR_Name[0] == 0xe5){//deleted file
-			no = file_name2(i, fname2, no);
+			file_name(i, fname2);
 			fname2[0] = '?';
+			if (fname2[6] == '~') {
+				printf("%d, LFN entry\n", no++);
+			}
 			printf("%d, %s, %u, %u\n", no++, fname2, fsize, start);
 		}
 		else {
+			if (fname[6] == '~') {
+				printf("%d, LFN entry\n", no++);
+			}
 			printf("%d, %s, %u, %u\n",no++, fname, fsize, start);
 		}
 	}
@@ -259,7 +235,7 @@ int main( int argc, char *argv[] ) {
 				fptr = fopen(argv[2],"r");
 				devfile = optarg;
 				if (fptr == NULL) {
-					perror("Error: ");
+					perror("Error");
 					exit(1);
 				}
                 dflag++;
