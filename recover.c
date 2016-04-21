@@ -299,7 +299,7 @@ void cleanse(){
 
 int main( int argc, char *argv[] ) {
 
-    if (strcmp(argv[1], "-d") != 0 ) {
+    if (argv[1] == NULL || strcmp(argv[1], "-d") != 0 ) {
         print_usage(argv[0]);
     }
     int opt = 0;
@@ -347,7 +347,7 @@ int main( int argc, char *argv[] ) {
                     break;
                 }
             case 'r' :
-                if (dflag == 0) {
+                if (dflag == 0 || argv[5] == NULL) {
                     print_usage(argv[0]);
                 } else {
                     printf("-r\n");
