@@ -212,7 +212,6 @@ void cleanse(){
 	unsigned int i, match = -1;
 	unsigned int fsize, start;
 	char fname[257];
-	char zero[512] = {0};
 
 	for (i = 0; i < total_dir_entry; i++) {
 		if (dir[i].DIR_Name[0] != 0xe5 || dir[i].DIR_Attr == 0x0f || dir[i].DIR_Attr == 0x10) {
@@ -234,7 +233,8 @@ void cleanse(){
 			printf("%s: error - fail to cleanse\n", ctarget);
 		} else {
 			FILE *fptr = fopen(devfile, "r+");
-			pwrite(fileno(fptr), &zero, fsize, offset + (start-2) * boot.BPB_BytsPerSec * boot.BPB_SecPerClus);
+			const void *buf = calloc(fsize, sizeof(int));
+			pwrite(fileno(fptr), buf, fsize, offset + (start-2) * boot.BPB_BytsPerSec * boot.BPB_SecPerClus);
 			printf("%s: cleansed\n", ctarget);
 			fclose(fptr);
 		}
@@ -286,7 +286,7 @@ int main( int argc, char *argv[] ) {
                     break;
                 }
             case 'r' :
-                if (dflag == 0 || argv[5] == NULL) {
+                if (dflag == 0 || argv[5] == NULL || strcmp(argv[5], "-o") != 0) {
                     print_usage(argv[0]);
                 } else {
 					rflag++;
