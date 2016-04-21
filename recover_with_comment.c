@@ -86,7 +86,12 @@ void file_name(unsigned i, char *tmp){
 		}
 	}
 	if(dir[i].DIR_Attr & 0x10){
-		*tmp++ ='/';
+		// if(su&&dir[i].DIR_Name[0]=='.'){
+		// 	*tmp++ ='/';
+		// }
+		// else {
+			*tmp++ ='/';
+		// }
 	}
 	*tmp='\0';
 }
@@ -115,7 +120,12 @@ int file_name2(unsigned i,char *tmp, int no){
 		}
 	}
 	if(dir[i].DIR_Attr & 0x10){
-		*tmp++ ='/';
+		// if(su&&dir[i].DIR_Name[0]=='.'){
+		// 	*tmp++ ='/';
+		// }
+		// else {
+			*tmp++ ='/';
+		// }
 	}
 	*tmp='\0';
 	return no;
@@ -123,31 +133,69 @@ int file_name2(unsigned i,char *tmp, int no){
 
 void list_file(FILE *fptr){
 	unsigned int i, fsize, start;
-	char fname[257], fname2[257]; //fname2=deleted file
+	char fname[257], fname2[257];//fname2=deleted file
 	int no = 1;
 
 	for(i = 0; i < total_dir_entry; i++){
 		if ( dir[i].DIR_Attr == 0x0f || dir[i].DIR_Name[0] == 0x00) {
 			continue;
 		}
-
 		no = file_name2(i, fname, no);
 		fsize = dir[i].DIR_FileSize;
 		start = (dir[i].DIR_FstClusHI << 16) + dir[i].DIR_FstClusLO;
-
-		if(dir[i].DIR_Name[0] == 0xe5){//deleted file
-			no = file_name2(i, fname2, no);
-			fname2[0] = '?';
-			printf("%d, %s, %u, %u\n", no++, fname2, fsize, start);
-		}
-		else {
-			printf("%d, %s, %u, %u\n",no++, fname, fsize, start);
-		}
+		// if(sub){//subdirectory
+		// 	if (strcmp(fname, target) == 0){
+		// 		sub=0;
+		// 		address=offset +(start-2)*boot.BPB_BytsPerSec *boot.BPB_SecPerClus;
+		// 		offset=address;
+		// 		unsigned int root_cluster;
+		// 		// FILE *fptr = fopen(devfile,"r");
+		// 		fread(&boot,sizeof(struct BootEntry),1,fptr);		//read the file into boot with BootEntry structure
+		// 		fat_disk = malloc(boot.BPB_FATSz32*boot.BPB_BytsPerSec);
+		// 		pread(fileno(fptr), fat_disk, boot.BPB_FATSz32*boot.BPB_BytsPerSec, boot.BPB_RsvdSecCnt*boot.BPB_BytsPerSec);
+		// 		struct DirEntry *ter;
+		// 		ter = dir = malloc(root_cluster*boot.BPB_BytsPerSec *boot.BPB_SecPerClus);
+		// 		root_cluster=0;
+		// 		for (i=boot.BPB_RootClus;i<EOC;i=fat_disk[i]){
+		// 			root_cluster++;
+		// 		}
+		// 		for(i=boot.BPB_RootClus;i<EOC;i=fat_disk[i]){
+		// 			pread(fileno(fptr),ter,boot.BPB_BytsPerSec *boot.BPB_SecPerClus,offset);
+		// 			ter += (boot.BPB_BytsPerSec *boot.BPB_SecPerClus)/sizeof(struct DirEntry);
+		// 		}
+		// 		su=1;
+		// 		for(i=0;i<total_dir_entry;i++){
+		// 			if ( dir[i].DIR_Attr == 0x0f||dir[i].DIR_Name[0] ==0x00) continue;
+		// 			file_name(i,fname);
+		// 			fsize = dir[i].DIR_FileSize;
+		// 			start = (dir[i].DIR_FstClusHI<<16)+dir[i].DIR_FstClusLO;
+		// 			if(dir[i].DIR_Name[0]==0xe5){ //deleted file
+		// 				file_name(i,fname2);
+		// 				fname2[0]='?';
+		// 				printf("%d, %s, %u, %u\n",no++,fname2,fsize,start);
+		// 			}
+		// 				else
+		// 				printf("%d, %s, %u, %u\n",no++,fname,fsize,start);
+		// 			}
+		// 		}
+		// 		else sub=1;//not match
+		// 	}
+		// 	else{//not a sub directory
+				if(dir[i].DIR_Name[0] == 0xe5){//deleted file
+					no = file_name2(i, fname2, no);
+					fname2[0] = '?';
+					printf("%d, %s, %u, %u\n", no++, fname2, fsize, start);
+				}
+				else {
+					printf("%d, %s, %u, %u\n",no++, fname, fsize, start);
+				}
+			// }
 	}
 }
 
 void readbootentry(FILE *fptr){
 	unsigned int root_cluster, i;
+	// FILE *fptr = fopen(devfile,"r");
 	fread(&boot, sizeof(struct BootEntry), 1, fptr);		//read the file into boot with BootEntry structure
 	fat_disk = malloc(boot.BPB_FATSz32 * boot.BPB_BytsPerSec);
 	pread(fileno(fptr), fat_disk, boot.BPB_FATSz32 * boot.BPB_BytsPerSec, boot.BPB_RsvdSecCnt * boot.BPB_BytsPerSec);
@@ -156,6 +204,7 @@ void readbootentry(FILE *fptr){
 		root_cluster++;
 	}
 
+	// printf("root_cluster: %d\n", root_cluster);
 	struct DirEntry *ter;
 	ter = dir = malloc(root_cluster * boot.BPB_BytsPerSec * boot.BPB_SecPerClus);
 	total_dir_entry = (root_cluster * boot.BPB_BytsPerSec * boot.BPB_SecPerClus) / sizeof(struct DirEntry);
@@ -183,7 +232,6 @@ void recovery(){
 			}
 		}
 	}
-
 	if (match == -1)
 		printf("%s: error - file not found\n", target);
 	else {
@@ -233,10 +281,18 @@ void cleanse(){
 		if (fsize == 0 && fat_disk[start] != 0) {
 			printf("%s: error - fail to cleanse\n", ctarget);
 		} else {
-			FILE *fptr = fopen(devfile, "r+");
-			pwrite(fileno(fptr), &zero, fsize, offset + (start-2) * boot.BPB_BytsPerSec * boot.BPB_SecPerClus);
-			printf("%s: cleansed\n", ctarget);
-			fclose(fptr);
+				FILE *fptr = fopen(devfile, "r+");
+				// FILE *op = fopen(dest,"w");
+				// if (op == NULL) {
+				// 	printf("%s: failed to open\n", dest);
+				// } else {
+					// void *buf = malloc(fsize);
+					pwrite(fileno(fptr), &zero, fsize, offset + (start-2) * boot.BPB_BytsPerSec * boot.BPB_SecPerClus);
+					// fwrite(&zero, fsize, 1, fptr);
+					printf("%s: cleansed\n", ctarget);
+					// fclose(op);
+				// }
+				fclose(fptr);
 		}
 	}
 }
@@ -256,6 +312,7 @@ int main( int argc, char *argv[] ) {
                 if(argv[3] == NULL || strcmp(argv[2], "-i") == 0  || strcmp(argv[2], "-l") == 0  || strcmp(argv[2], "-r") == 0  || strcmp(argv[2], "-x") == 0 ) {
                     print_usage(argv[0]);
                 }
+                printf("-d: %s\n", argv[2]);
 				fptr = fopen(argv[2],"r");
 				devfile = optarg;
 				if (fptr == NULL) {
@@ -268,6 +325,7 @@ int main( int argc, char *argv[] ) {
                 if (dflag == 0) {
                     print_usage(argv[0]);
                 } else {
+                    printf("-i\n");
                     fread(&boot,sizeof(struct BootEntry),1,fptr);
                     printf("Number of FATs = %u\n", boot.BPB_NumFATs);
                     printf("Number of bytes per sector = %d\n", boot.BPB_BytsPerSec);
@@ -281,23 +339,30 @@ int main( int argc, char *argv[] ) {
                 if (dflag == 0) {
                     print_usage(argv[0]);
                 } else {
+                    printf("-l\n");
 					readbootentry(fptr);
 					list_file(fptr);
+					// list_directory();
+					// print_direction();
                     break;
                 }
             case 'r' :
                 if (dflag == 0 || argv[5] == NULL) {
                     print_usage(argv[0]);
                 } else {
+                    printf("-r\n");
 					rflag++;
 					target = optarg;
+					// printf("target: %s\n", target);
 					break;
                 }
             case 'o' :
                 if (dflag == 0 || rflag == 0) {
                     print_usage(argv[0]);
 				} else {
+                    printf("-o\n");
 					dest = optarg;
+					// printf("dest: %s\n", dest);
 					readbootentry(fptr);
 					recovery();
                     break;
@@ -306,6 +371,7 @@ int main( int argc, char *argv[] ) {
                 if (dflag == 0) {
                     print_usage(argv[0]);
                 } else {
+                    printf("-x\n");
 					ctarget = optarg;
 					readbootentry(fptr);
 					cleanse();
@@ -315,5 +381,8 @@ int main( int argc, char *argv[] ) {
 				exit(1);
         }
     }
+
+
+	// fclose(fptr);
     return 0;
 }
